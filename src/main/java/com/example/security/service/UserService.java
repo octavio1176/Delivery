@@ -1,5 +1,4 @@
 package com.example.security.service;
-
 import com.example.security.domain.LoginDto.ForgotPasswordRequest;
 import com.example.security.domain.LoginDto.LoginRequestDTO;
 import com.example.security.domain.LoginDto.LoginResponseDTO;
@@ -11,11 +10,11 @@ import com.example.security.domain.entity.UserStaus;
 import com.example.security.domain.repository.UserRepository;
 import com.example.security.exception.CodeNotFoundException;
 import com.example.security.exception.EmailAlreadyExistsException;
+import com.example.security.exception.InvalidCodeException;
 import com.example.security.exception.UserNotFoundException;
 import com.example.security.security.JwtService;
 import com.example.security.util.RandomString;
 import jakarta.mail.MessagingException;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,8 +24,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -58,20 +57,22 @@ public class UserService {
         this.userDetailsService = userDetailsService;
     }
 
-    public void register(UserRequest userRequest) throws MessagingException
+    public void register(UserRequest userRequest)
     {
+        User user =userRepository.findUsersByEmail(userRequest.name())
 
-        if (userRepository.findUsersByEmail(userRequest.email()).isPresent()) {
-            throw new EmailAlreadyExistsException();
-        }
+                .orElseThrow(EmailAlreadyExistsException::new);
 
-        String code = RandomString.generateNumericCode();
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(CODE_EXPIRATION_MINUTES);
+        String code =RandomString.generateNumericCode();
+
+        LocalDateTime expired= LocalDateTime.now().plusMinutes(CODE_EXPIRATION_MINUTES);
 
         pendingUsers.put(userRequest.email(), userRequest);
-        verificationCodes.put(userRequest.email(), new VerificationCode(code, expiresAt));
 
-        emailService.sendConfirmationEmail(userRequest.email(), code);
+        verificationCodes.put(userRequest.email(), new VerificationCode(code,expired));
+
+        emailService.sendCode(userRequest.email(), code);
+
     }
 
     public LoginResponseDTO confirmCode(String email, String code)
@@ -80,12 +81,16 @@ public class UserService {
         VerificationCode saved = verificationCodes.get(email);
 
         if (saved == null) {
-            throw new RuntimeException("Code  not found .");
+            throw new CodeNotFoundException();
+
         }
 
         if (saved.isExpired()) {
+
             verificationCodes.remove(email);
+
             pendingUsers.remove(email);
+
             throw new RuntimeException("code expired . ask for another one.");
         }
 
@@ -95,88 +100,106 @@ public class UserService {
 
         UserRequest request = pendingUsers.get(email);
 
+
         User user = new User();
+
         user.setName(request.name());
+
         user.setEmail(request.email());
+
         user.setPassword(passwordEncoder.encode(request.password()));
+
         user.setUserStaus(UserStaus.USER);
+
         user.setEnabled(true);
+
+        user.setRegister_time(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+
 
         userRepository.save(user);
 
         verificationCodes.remove(email);
+
         pendingUsers.remove(email);
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
         String token = jwtService.generateToken(userDetails);
 
         user.setToken(token);
+
         userRepository.save(user);
 
         return new LoginResponseDTO(token);
+
     }
 
     public LoginResponseDTO login(LoginRequestDTO loginRequestDTO)
     {
+      Authentication authentication = authenticationManager.authenticate
+              (new UsernamePasswordAuthenticationToken(loginRequestDTO.email(), loginRequestDTO.password()));
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequestDTO.email(), loginRequestDTO.password()));
 
-        User user = (User) authentication.getPrincipal();
+         User user =  (User) authentication.getPrincipal();
 
         assert user != null;
+
         String token = jwtService.generateToken(user);
 
         user.setToken(token);
+
         userRepository.save(user);
 
         return new LoginResponseDTO(token);
+
     }
 
-    public void forgotPassword(ForgotPasswordRequest request)
-    {
+    public void forgotPassword(ForgotPasswordRequest request) throws MessagingException {
 
-        User user = userRepository.findUsersByEmail(request.email()).
-                orElseThrow(UserNotFoundException::new);
+       User user =userRepository.findUsersByEmail(request.email()).
+               orElseThrow(UserNotFoundException::new);
 
-        String code = RandomString.generateNumericCode();
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(CODE_EXPIRATION_MINUTES);
+       LocalDateTime EXPIRATION_TIME=LocalDateTime.now().plusMinutes(10);
 
-        passwordResetCodes.put(user.getEmail(), new VerificationCode(code, expiresAt));
+       String code =RandomString.generateNumericCode();
 
-        emailService.sendCode(user.getEmail(), code);
+       passwordResetCodes.put(request.email(), new VerificationCode(code , EXPIRATION_TIME));
+
+       emailService.sendConfirmationEmail(code , request.email());
+
     }
 
     public void resetPassword(ResetPasswordRequest request)
     {
+        VerificationCode verificationCode = passwordResetCodes.get(request.email());
+        User user = userRepository.findUsersByEmail(request.email())
+                .orElseThrow(UserNotFoundException::new);
 
-        VerificationCode saved = passwordResetCodes.get(request.email());
-
-        if (saved == null)
+        if (verificationCodes.isEmpty())
         {
             throw new CodeNotFoundException();
         }
-
-        if (saved.isExpired())
+        if (verificationCode.isExpired())
         {
-            passwordResetCodes.remove(request.email());
-            throw new IllegalStateException("code expired . ask for another one");
+            throw new  InvalidCodeException();
         }
-
-        if (!saved.code().equals(request.code()))
+        if (!verificationCode.code().equals(request.code()))
         {
-            throw new IllegalStateException("invalid Code.");
+            throw  new InvalidCodeException();
         }
-
-        User user = userRepository.findUsersByEmail(request.email())
-                .orElseThrow(() -> new EntityNotFoundException("User not found "));
 
         user.setPassword(passwordEncoder.encode(request.newPassword()));
-        user.setToken(null);
+
+        String token = jwtService.generateToken(user);
+
+        user.setToken(token);
+
         userRepository.save(user);
 
         passwordResetCodes.remove(request.email());
+
     }
+
     public void logout(){
         User user =  (User) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
         assert user != null;

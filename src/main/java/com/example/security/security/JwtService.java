@@ -24,6 +24,7 @@ public class JwtService {
 
     public String generateToken(UserDetails userDetails)
     {
+
         return Jwts.builder()
                 .subject(userDetails.getUsername())
                 .claim("role",userDetails.getAuthorities())
@@ -64,7 +65,8 @@ public class JwtService {
         return extractExpiration(token).before(new Date());
     }
 
-    private Date extractExpiration(String token) {
+    private Date extractExpiration(String token)
+    {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()

@@ -11,6 +11,7 @@ public class RandomString {
             int  index=secureRandom.nextInt(CHARACTERES.length());
             sb.append(CHARACTERES.charAt(index));
         }
+
         return sb.toString();
     }
 

@@ -2,9 +2,11 @@ package com.example.security.service;
 import com.example.security.domain.entity.Product;
 import com.example.security.domain.product.ProductRequest;
 import com.example.security.domain.repository.ProductRepository;
+import com.example.security.exception.ProductNotFoundException;
 import com.example.security.mapper.ProductMapper;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import java.util.List;
 @Service
@@ -61,6 +63,11 @@ public class ProductService {
     {
         Product product = findById(id);
         productRepository.delete(product);
+    }
+
+    public List<Product> findByName(String name){
+        return productRepository.findAllByName(name).
+                orElseThrow(ProductNotFoundException::new);
     }
 
 }

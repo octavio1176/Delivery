@@ -16,6 +16,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
     private final JwtAuthFilter jwtAuthFilter;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter)
@@ -27,7 +28,6 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain (HttpSecurity httpSecurity) throws  Exception
     {
         httpSecurity
-
 
                 .csrf(AbstractHttpConfigurer::disable)
 
@@ -43,7 +43,7 @@ public class SecurityConfig {
                                         "/error", "/API/confirmation", "/API/criar", "/API/forgot-password","/API/reset-password")
 
 
-                            .permitAll().anyRequest().authenticated())
+                            .permitAll().anyRequest().permitAll())
 
 
                 .headers(h->h.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))

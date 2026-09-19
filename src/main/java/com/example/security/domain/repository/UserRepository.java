@@ -11,7 +11,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByConfirmationToken(String confirmationToken);
 
-    //Optional<User> findByUserByEmail(String email);
 
     Optional<User> findUsersByEmail(String email);
 }

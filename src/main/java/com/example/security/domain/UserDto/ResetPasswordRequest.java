@@ -6,12 +6,12 @@ import jakarta.validation.constraints.Size;
 
 import java.util.Optional;
 public record ResetPasswordRequest(
-        @Email
+        @Email(message = "E-mail inválido")
         @NotBlank
         String email,
-        @NotBlank
+        @NotBlank(message = "o codigo nao deve ser vazio ")
         String code,
-        @NotBlank
+        @NotBlank( message = " a nova senha nao deve estar vazia ")
         @Size(min = 8)
         String newPassword
 ) {}

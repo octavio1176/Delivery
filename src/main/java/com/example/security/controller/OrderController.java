@@ -22,6 +22,7 @@ public class OrderController {
     public OrderController(OrderService orderService) {
         this.orderService = orderService;
     }
+
     @PostMapping("order")
     public ResponseEntity<OrderResponse> makeOrder(
             @AuthenticationPrincipal User user,

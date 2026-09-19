@@ -6,6 +6,7 @@ import com.example.security.domain.entity.*;
 import com.example.security.domain.orderItem.OrderItemRequest;
 import com.example.security.domain.repository.OrderRepository;
 import com.example.security.domain.repository.ProductRepository;
+import com.example.security.exception.InsufficientStock;
 import com.example.security.mapper.OrderMapper;
 import jakarta.mail.MessagingException;
 import jakarta.persistence.EntityNotFoundException;
@@ -27,6 +28,7 @@ public class OrderService {
 
     @Transactional
     public OrderResponse createOrder(User user, OrderRequest request) throws MessagingException {
+
         Order order = new Order();
         order.setUser(user);
         order.setOrderStatus(OrderStatus.PENDING);
@@ -37,12 +39,13 @@ public class OrderService {
 
         for (OrderItemRequest itemDto : request.items())
         {
+
             Product product = productRepository.findById(itemDto.productId())
                     .orElseThrow(() -> new EntityNotFoundException("Product not found: " + itemDto.productId()));
 
             if (product.getQuantity() < itemDto.quantity())
             {
-                throw new IllegalStateException("insufficient stock: " + product.getName());
+                throw new InsufficientStock();
             }
 
             product.setQuantity(product.getQuantity() - itemDto.quantity());
