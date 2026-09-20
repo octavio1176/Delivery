@@ -1,7 +1,6 @@
 package com.example.security.util;
 import java.security.SecureRandom;
 
-
 public class RandomString {
     private static final String CHARACTERES =  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     public static String generateRandomString(int length){
@@ -11,6 +10,7 @@ public class RandomString {
             int  index=secureRandom.nextInt(CHARACTERES.length());
             sb.append(CHARACTERES.charAt(index));
         }
+
 
         return sb.toString();
     }
