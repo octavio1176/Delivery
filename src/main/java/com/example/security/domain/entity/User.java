@@ -6,10 +6,12 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import javax.management.relation.Role;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
@@ -18,6 +20,7 @@ import java.util.List;
 @Setter
 @Getter
 @Table(name = "users")
+
 public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -61,32 +64,36 @@ public class User implements UserDetails {
     private String token;
 
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(userStaus.name()));
+    public @NullMarked Collection<? extends GrantedAuthority> getAuthorities() {
+        if (this.userStaus==UserStaus.ADMIN){
+            return List.of(new SimpleGrantedAuthority("Role_User"), new SimpleGrantedAuthority("Role_Admin"));
+        }
+        return List.of(new SimpleGrantedAuthority("Role_User"));
     }
 
+
     @Override
-    public String getUsername() {
+    public  @NullMarked String getUsername() {
         return email;
     }
 
     @Override
-    public boolean isAccountNonExpired() {
+    public @NullMarked boolean isAccountNonExpired() {
         return true;
     }
 
     @Override
-    public boolean isAccountNonLocked() {
+    public @NullMarked boolean isAccountNonLocked() {
         return true;
     }
 
     @Override
-    public boolean isCredentialsNonExpired() {
+    public @NullMarked boolean isCredentialsNonExpired() {
         return true;
     }
 
     @Override
-    public boolean isEnabled() {
+    public @NullMarked boolean isEnabled() {
         return enabled;
     }
 }
