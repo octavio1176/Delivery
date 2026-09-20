@@ -1,16 +1,10 @@
 package com.example.security.mapper;
-import com.example.security.domain.entity.Category;
 import com.example.security.domain.product.ProductRequest;
 import com.example.security.domain.product.ProductResponse;
 import com.example.security.domain.entity.Product;
-import com.example.security.domain.repository.CategoryRepository;
-import jakarta.validation.constraints.NotBlank;
-
 import java.util.List;
-import java.util.Locale;
 
 public class ProductMapper {
-
 
    public static Product toEntity(ProductRequest  dto)
    {
